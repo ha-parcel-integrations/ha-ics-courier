@@ -1,0 +1,203 @@
+# ICS Courier Parcel Tracker
+
+[![Release](https://img.shields.io/github/v/release/ha-parcel-integrations/ha-ics-courier.svg)](https://github.com/ha-parcel-integrations/ha-ics-courier/releases)
+[![Downloads](https://img.shields.io/github/downloads/ha-parcel-integrations/ha-ics-courier/total.svg)](https://github.com/ha-parcel-integrations/ha-ics-courier/releases)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
+
+A custom Home Assistant integration that tracks your [ICS Courier](https://www.icscourier.ca) parcels in Canada. No account is needed — you enter the tracking code yourself, just like on the ICS Courier website.
+
+> **Pre-release.** Only the delivered status has been confirmed against real parcels. ICS Courier reports the latest status only, so every other status shows as `unknown` (with its code logged once as a warning) until it has been mapped. Please report those log lines.
+
+Part of the [ha-parcel-integrations](https://ha-parcel-integrations.github.io/) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
+
+## Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Options](#options)
+- [Removal](#removal)
+- [Sensors](#sensors)
+- [Parcel status reference](#parcel-status-reference)
+- [Events](#events)
+- [Services](#services)
+- [Examples](#examples)
+- [Debugging](#debugging)
+- [Troubleshooting](#troubleshooting)
+- [Related integrations](#related-integrations)
+- [Disclaimer](#disclaimer)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
+
+- Track any number of ICS Courier parcels by tracking code — no account needed
+- Per-parcel sensor with the canonical status (`delivered`, or `unknown` for statuses not mapped yet) and ICS Courier's own status code
+- Summary sensors: incoming parcels, next delivery, recently delivered parcels
+- Read-only **Deliveries** calendar (ICS Courier publishes no expected delivery window, so it stays empty)
+- `ics_courier.track_parcel` / `ics_courier.untrack_parcel` services, so a dashboard button can add a parcel
+- Events + device triggers for no-code automations (parcel registered, status changed, delivered)
+- Opt-in per-parcel status history (a single entry: ICS Courier reports the latest status only)
+- Manual refresh button and a diagnostic last-update sensor
+
+## Requirements
+
+- Home Assistant 2024.12 or newer
+- An ICS Courier parcel and its tracking code (from the shipping
+  confirmation email or the missed-delivery card) — no account needed
+- A Canadian parcel: ICS Courier only operates there
+
+## Installation
+
+### HACS (recommended)
+
+1. In HACS, choose the three-dot menu → **Custom repositories**.
+2. Add `https://github.com/ha-parcel-integrations/ha-ics-courier` as an **Integration**.
+3. Install **ICS Courier** and restart Home Assistant.
+
+### Manual
+
+Copy `custom_components/ics_courier` into your `config/custom_components/` folder and restart Home Assistant.
+
+## Configuration
+
+Add the integration via **Settings → Devices & Services → Add Integration → ICS Courier**. There is nothing to fill in: the hub is created immediately (ICS Courier tracking needs no account).
+
+Then add parcels via the integration's **Configure** dialog, the [`ics_courier.track_parcel`](#services) service, or a [dashboard button](examples/dashboards/add_parcel_card.yaml). The tracking code is on your shipping confirmation email or the missed-delivery card.
+
+## Options
+
+Open **Configure** on the integration entry:
+
+| Section | Option | Default | Description |
+|---|---|---|---|
+| Parcels | Add / remove | — | Manage the tracked tracking codes. Changes apply immediately, no restart. |
+| Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
+| Parcel history | Include status history | off | Adds a `history` attribute per parcel with the latest status record. |
+
+Polling isn't one of these settings: the integration polls on a dynamic,
+status-driven schedule with nothing to configure.
+
+## Dynamic polling
+
+Polling isn't a setting here — the integration adjusts its own cadence to
+what your tracked parcels are actually doing:
+
+- **Quiet hours** — no polling between 00:00–06:00 local time, aside from one
+  catch-up check at each end of that window (around midnight and around 6
+  AM), so an overnight update is never missed.
+- **Hot (every 15 minutes)** — while any tracked parcel is out for delivery
+  today, starting an hour before its delivery window opens (or immediately if
+  no window is known yet).
+- **Normal (every 45 minutes)** — for anything else still on its way.
+- **Fully paused** — once every tracked parcel has been delivered, or nothing
+  is tracked at all, polling stops until you add a parcel back (adding one
+  always triggers an immediate check, regardless of the pause).
+- A small, fixed per-hub offset is added on top, so not every ICS Courier
+  hub out there polls at exactly the same second.
+
+ICS Courier reports no delivery window and no out-for-delivery status, so the hot tier is not used: every parcel that is not delivered is checked every 45 minutes.
+
+## Removal
+
+Standard HA removal applies: **Settings → Devices & Services → ICS Courier → ⋮ → Delete**. Nothing is stored on ICS Courier's side.
+
+## Sensors
+
+| Entity | Description |
+|---|---|
+| `sensor.ics_courier_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
+| `sensor.ics_courier_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
+| `sensor.ics_courier_next_delivery` | Earliest expected delivery moment across all active parcels |
+| `sensor.ics_courier_delivered_parcels` | Recently delivered parcels (see the retention option) |
+| `sensor.ics_courier_last_successful_update` | Diagnostic: when ICS Courier was last polled successfully |
+
+A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
+
+## Parcel status reference
+
+The `status` field is the carrier-agnostic enum shared by the whole integration family:
+
+| Status | Meaning |
+|---|---|
+| `delivered` | Delivered |
+| `unknown` | Not found yet, or a status that is not mapped yet |
+
+`raw_status` carries a short label ("Delivered") or ICS Courier's own status code. The full carrier text names the recipient and address, so it is not shown by default.
+
+## Events
+
+The integration fires these on the event bus (also available as device triggers on the ICS Courier device):
+
+| Event | When |
+|---|---|
+| `ics_courier_parcel_registered` | A new parcel appears in the active list |
+| `ics_courier_parcel_status_changed` | A parcel's canonical status changes (`old_status` / `new_status` in the payload), except the final hop to delivered |
+| `ics_courier_parcel_delivered` | A parcel is delivered |
+| `ics_courier_parcel_delivery_time_changed` | The expected delivery window changes |
+
+Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up.
+
+## Services
+
+| Service | Fields | Description |
+|---|---|---|
+| `ics_courier.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `ics_courier.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+
+## Examples
+
+Ready-to-paste automations and dashboard snippets live in [`examples/`](examples/), including tracking a new parcel straight from a dashboard.
+
+### Community Lovelace cards
+
+Third-party cards that work with this integration's sensors:
+
+- [jonisnet/hki-parcels-card](https://github.com/jonisnet/hki-parcels-card)
+- [klaptafel/ha-package-tracker-card](https://github.com/klaptafel/ha-package-tracker-card)
+
+## Debugging
+
+```yaml
+logger:
+  logs:
+    custom_components.ics_courier: debug
+```
+
+## Troubleshooting
+
+- **A parcel shows `unknown`** — ICS Courier has not scanned it yet (ICS Courier answers "not found" until the first scan), or the code is wrong. It will pick up automatically once scanned.
+- **A status logs "Unrecognised ICS Courier status"** — please [open an issue](https://github.com/ha-parcel-integrations/ha-ics-courier/issues/new) with the logged line so the mapping can be extended.
+
+## Related integrations
+
+This integration is part of [**ha-parcel-integrations**](https://ha-parcel-integrations.github.io/) — a family of
+parcel-carrier integrations that all publish the same canonical parcel format,
+statuses and events.
+
+- [**Parcel Aggregator**](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) rolls every installed carrier
+  up into one set of sensors.
+- Browse [the organisation](https://ha-parcel-integrations.github.io/) for the current list of supported carriers.
+
+## Disclaimer
+
+This is an independent, community-built project. It is not affiliated with, endorsed by, sponsored by, or supported by ICS Courier, Home Assistant, or any other third party referenced in this project. Please don't contact ICS Courier for support with this integration.
+
+All third-party trademarks, trade names, product names, logos, and other brand assets are the property of their respective owners. References to them are solely to identify the relevant carrier or service and do not imply affiliation, sponsorship, or endorsement. Nothing in this project grants or implies any licence or right to use third-party brand assets.
+
+This integration relies on ICS Courier's public tracking web service, which is not an officially supported integration interface. These may change or be withdrawn without notice and may be subject to ICS Courier's terms. Tracking codes are sent only to ICS Courier's own service; this project operates no servers of its own. You are responsible for ensuring that your use complies with applicable law and those terms. Use is at your own risk; see the [licence](LICENSE) for warranty limitations.
+
+This integration uses the same public tracking endpoint as the ICS Courier consumer website.
+
+## Contributing
+
+Pull requests and issues are welcome. Please open an issue before
+submitting a large change.
+
+## License
+
+[MIT](LICENSE)
