@@ -51,6 +51,10 @@ _STATUS_MAP: dict[str, ParcelStatus] = {
 # Status codes we have already warned about, so each unmapped one is logged
 # only once per HA session instead of on every poll.
 _unmapped_statuses_logged: set[str] = set()
+_unreadable_times_logged: set[str] = set()
+
+# The one field a record dates itself with.
+_TIMESTAMP_FIELD = "StatusDate"
 
 
 def _warn_unmapped_status(code: str) -> None:
@@ -97,6 +101,20 @@ def map_event_status(code: str | None) -> ParcelStatus | None:
         return mapped
     _warn_unmapped_status(code)
     return None
+
+
+def _warn_unreadable_timestamp() -> None:
+    """Report once that a record's own timestamp could not be read."""
+    if _TIMESTAMP_FIELD in _unreadable_times_logged:
+        return
+    _unreadable_times_logged.add(_TIMESTAMP_FIELD)
+    _LOGGER.warning(
+        "ICS Courier sent a time this integration cannot read, so the "
+        "parcel's history may be ordered wrongly. Open an issue and paste "
+        "this line: %s\n  field=%s",
+        NEW_ISSUE_URL,
+        _TIMESTAMP_FIELD,
+    )
 
 
 def parse_iso(value: str | None) -> datetime | None:
@@ -200,6 +218,8 @@ def build_history(
         timestamp = event.get("StatusDate")
         if not timestamp:
             continue
+        if parse_iso(timestamp) is None:
+            _warn_unreadable_timestamp()
         history.append(
             {
                 "timestamp": timestamp,

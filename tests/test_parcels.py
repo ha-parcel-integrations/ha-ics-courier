@@ -156,6 +156,18 @@ def test_build_history_skips_records_without_a_date():
     assert build_history([record("SYNTH", "")]) == []
 
 
+def test_build_history_reports_a_time_it_cannot_read_once(caplog):
+    events = [
+        record("SYNTH", "yesterday afternoon", sequence=1),
+        record("SYNTH", "the day before", sequence=2),
+    ]
+    with caplog.at_level(logging.WARNING):
+        history = build_history(events)
+    assert len(history) == 2  # the entry is kept, just not ordered on its time
+    assert caplog.text.count("cannot read") == 1
+    assert "StatusDate" in caplog.text
+
+
 # ---------------------------------------------------------------------------
 # normalize_parcel — the canonical contract
 # ---------------------------------------------------------------------------

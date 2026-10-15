@@ -57,7 +57,9 @@ you act in one of these areas:
   `raw` keeps the full record; diagnostics redact the free-text and signer
   fields. The signer is never delivery proof.
 - **Timestamps are published as received** (no timezone, Canadian local
-  time); `parse_iso` treats them as UTC only for sorting.
+  time); `parse_iso` treats them as UTC only for sorting. One that cannot be
+  read is still published — the entry is real — but it logs one WARNING,
+  because it is the sort order that suffers.
 - **Fields that are `None` on purpose:** sender, receiver, ETA window, pickup
   point, weight, dimensions and `url` (no code-bearing consumer link).
   `CAPABILITIES` is `{"history"}` and must stay in agreement.

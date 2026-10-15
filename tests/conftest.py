@@ -22,6 +22,7 @@ def reset_one_shot_warnings():
     from custom_components.ics_courier import parcels
 
     parcels._unmapped_statuses_logged.clear()
+    parcels._unreadable_times_logged.clear()
     yield
 
 
