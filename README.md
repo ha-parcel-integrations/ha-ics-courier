@@ -46,7 +46,7 @@ Part of the [ha-parcel-integrations](https://ha-parcel-integrations.github.io/) 
 
 ## Requirements
 
-- Home Assistant 2024.12 or newer
+- Home Assistant 2025.12 or newer
 - An ICS Courier parcel and its tracking code (from the shipping
   confirmation email or the missed-delivery card) — no account needed
 - A Canadian parcel: ICS Courier only operates there
