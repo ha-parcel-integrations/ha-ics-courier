@@ -1,10 +1,12 @@
 """Tests for ICS Courier diagnostics."""
+
 from datetime import timedelta
 from unittest.mock import MagicMock
 
-from custom_components.ics_courier.diagnostics import (
-    async_get_config_entry_diagnostics,
-)
+from custom_components.ics_courier.diagnostics import async_get_config_entry_diagnostics
+from custom_components.ics_courier.parcels import normalize_parcel
+
+from .payloads import delivered_sample
 
 
 async def test_diagnostics_redacts_and_counts(hass):
@@ -71,10 +73,6 @@ async def test_diagnostics_reports_suspended_polling(hass):
 
 async def test_diagnostics_redacts_a_normalised_delivered_record(hass):
     """Status text embeds the recipient's name and address; none may survive."""
-    from custom_components.ics_courier.parcels import normalize_parcel
-
-    from .payloads import delivered_sample
-
     entry = MagicMock()
     entry.options = {"parcels": []}
     entry.runtime_data.coordinator.current_tier_minutes = 45

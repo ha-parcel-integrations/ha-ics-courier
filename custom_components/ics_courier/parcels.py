@@ -10,11 +10,12 @@ The carrier-specific parts are :data:`_STATUS_MAP`, :func:`build_history` and
 :func:`normalize_parcel`. The endpoint reports the latest status only, as a
 list of records keyed by ``Sequence``; the newest one drives the parcel.
 """
+
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 import logging
 import re
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -126,11 +127,11 @@ def parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -146,7 +147,7 @@ def to_iso_timestamp(value: Any) -> str | None:
         return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+            return datetime.fromtimestamp(value / 1000, tz=UTC).isoformat()
         except (OverflowError, OSError, ValueError):
             return None
     return str(value)
@@ -180,10 +181,8 @@ def ordered_events(events: list | None) -> list[dict]:
             continue
         seen.add(key)
         unique.append(event)
-    floor = datetime.min.replace(tzinfo=timezone.utc)
-    unique.sort(
-        key=lambda e: (_sequence(e), parse_iso(e.get("StatusDate")) or floor)
-    )
+    floor = datetime.min.replace(tzinfo=UTC)
+    unique.sort(key=lambda e: (_sequence(e), parse_iso(e.get("StatusDate")) or floor))
     return unique
 
 
@@ -197,7 +196,9 @@ def describe_event(event: dict) -> str | None:
     status = str(event.get("Status") or "")
     code = event.get("Code") or None
     if ":" in status:
-        head = re.sub(r"\s+at$", "", status.split(":", 1)[0].strip(), flags=re.I)
+        head = re.sub(
+            r"\s+at$", "", status.split(":", 1)[0].strip(), flags=re.IGNORECASE
+        )
         return head or code
     return code
 
@@ -295,14 +296,12 @@ def apply_delivered_filter(parcels: list[dict], entry: ConfigEntry) -> list[dict
     shows.
     """
     options = entry.options
-    filter_type = options.get(
-        CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-    )
+    filter_type = options.get(CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE)
     amount = int(
         options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
     )
     if filter_type == "days":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+        cutoff = datetime.now(UTC) - timedelta(days=amount)
         return [
             parcel
             for parcel in parcels

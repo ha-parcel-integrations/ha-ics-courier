@@ -3,6 +3,7 @@
 Every identifier, name, address and code here is invented. ``DELIV`` is the
 only status code the integration maps; ``SYNTH`` stands in for any other code.
 """
+
 from __future__ import annotations
 
 ACTIVE_CODE = "SYNTH0000000000001"
@@ -61,7 +62,9 @@ def out_for_delivery_sample(code: str = ACTIVE_CODE) -> dict:
     """A parcel carrying the invented ``SYNTHOUT`` code."""
     return {
         "trackingNumber": code,
-        "events": [record("SYNTHOUT", "2026-01-02T12:00:00", sequence=2, tracking=code)],
+        "events": [
+            record("SYNTHOUT", "2026-01-02T12:00:00", sequence=2, tracking=code)
+        ],
     }
 
 

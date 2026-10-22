@@ -1,4 +1,5 @@
 """Tests for the ICS Courier SOAP client."""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
@@ -13,12 +14,7 @@ from custom_components.ics_courier.api import (
 )
 from custom_components.ics_courier.const import SOAP_ACTION, TRACKING_API_URL
 
-from .payloads import (
-    NOT_FOUND_RECORD,
-    delivered_record,
-    record,
-    soap_response,
-)
+from .payloads import NOT_FOUND_RECORD, delivered_record, record, soap_response
 
 CODE = "SYNTH0000000000002"
 
@@ -121,14 +117,12 @@ async def test_non_2xx_is_an_error_with_status():
 
 
 @pytest.mark.parametrize(
-    "header,expected", [("30", 30.0), (None, None), ("Wed, 21 Oct", None)]
+    ("header", "expected"), [("30", 30.0), (None, None), ("Wed, 21 Oct", None)]
 )
 async def test_429_reads_retry_after(header, expected):
     headers = {"Retry-After": header} if header else {}
     with pytest.raises(ICSCourierApiError) as err:
-        await ICSCourierApiClient(_session(429, headers=headers)).async_get_parcel(
-            CODE
-        )
+        await ICSCourierApiClient(_session(429, headers=headers)).async_get_parcel(CODE)
     assert err.value.status_code == 429
     assert err.value.retry_after == expected
 

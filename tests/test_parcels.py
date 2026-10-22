@@ -3,8 +3,9 @@
 These need no Home Assistant instance — the carrier-specific mapping is kept
 free of I/O so it can be tested as plain functions.
 """
+
+from datetime import UTC, datetime, timedelta
 import logging
-from datetime import datetime, timedelta, timezone
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -86,7 +87,7 @@ def test_unmapped_status_warns_once_and_logs_only_the_code(caplog):
 
 def test_parse_iso_handles_z_naive_and_garbage():
     assert parse_iso("2026-04-29T13:12:42Z").tzinfo is not None
-    assert parse_iso("2026-04-29T13:12:42").tzinfo == timezone.utc
+    assert parse_iso("2026-04-29T13:12:42").tzinfo == UTC
     assert parse_iso("not-a-date") is None
     assert parse_iso(None) is None
 
@@ -147,7 +148,10 @@ def test_build_history_is_oldest_to_newest_with_safe_labels():
 
 
 def test_build_history_caps_to_max_events():
-    events = [record("SYNTH", f"2026-01-{day:02d}T10:00:00", sequence=day) for day in range(1, 26)]
+    events = [
+        record("SYNTH", f"2026-01-{day:02d}T10:00:00", sequence=day)
+        for day in range(1, 26)
+    ]
     assert len(build_history(events, max_events=20)) == 20
 
 
@@ -252,7 +256,10 @@ def test_normalize_unmapped_code_is_unknown_and_not_delivered():
     assert parcel["status"] == ParcelStatus.UNKNOWN
     assert parcel["delivered"] is False
     assert parcel["delivered_at"] is None
-    assert parcel["raw_status"] == "Synthetic in-flight status" or parcel["raw_status"] == "SYNTH"
+    assert (
+        parcel["raw_status"] == "Synthetic in-flight status"
+        or parcel["raw_status"] == "SYNTH"
+    )
 
 
 def test_signby_is_never_delivery_proof():
@@ -327,7 +334,7 @@ def _entry(filter_type: str, amount: int) -> MockConfigEntry:
 
 
 def _delivered_pair() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [
         {"barcode": "RECENT", "delivered_at": (now - timedelta(days=1)).isoformat()},
         {"barcode": "OLD", "delivered_at": (now - timedelta(days=30)).isoformat()},

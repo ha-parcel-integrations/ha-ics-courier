@@ -12,11 +12,12 @@ Contract the coordinator relies on:
   ``Retry-After`` in seconds,
 * lets ``aiohttp.ClientError`` propagate untouched.
 """
+
 from __future__ import annotations
 
 import asyncio
 from typing import Any
-from xml.etree import ElementTree
+from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
 import aiohttp
@@ -72,8 +73,9 @@ def parse_records(body: str) -> list[dict[str, str]]:
     if "<!DOCTYPE" in body.upper():
         raise ICSCourierApiError("unexpected DTD in response")
     try:
-        root = ElementTree.fromstring(body)
-    except ElementTree.ParseError as err:
+        # DTDs are rejected above, so entity-expansion attacks cannot reach the parser.
+        root = ET.fromstring(body)  # noqa: S314
+    except ET.ParseError as err:
         raise ICSCourierApiError("unparseable XML body") from err
 
     records: list[dict[str, str]] = []
@@ -95,9 +97,8 @@ def parse_records(body: str) -> list[dict[str, str]]:
 
 def _is_not_found(record: dict[str, str]) -> bool:
     """Return True for the semantic "unknown code" record."""
-    return (
-        record.get("Status", "").strip().lower() == "not found"
-        and not record.get("Code")
+    return record.get("Status", "").strip().lower() == "not found" and not record.get(
+        "Code"
     )
 
 

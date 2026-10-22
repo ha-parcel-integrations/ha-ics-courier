@@ -1,4 +1,5 @@
 """Tests for ICS Courier device triggers."""
+
 from unittest.mock import AsyncMock
 
 from custom_components.ics_courier.const import DOMAIN
