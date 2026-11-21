@@ -355,3 +355,17 @@ def test_delivered_filter_keeps_unparseable_timestamp():
     """Better to show a parcel with a broken date than to silently drop it."""
     parcels = [{"barcode": "WEIRD", "delivered_at": "nonsense"}]
     assert apply_delivered_filter(parcels, _entry("days", 7)) == parcels
+
+
+def test_unmapped_earlier_event_codes_do_not_warn(caplog):
+    caplog.set_level(logging.WARNING)
+    raw = {
+        "trackingNumber": "X",
+        "events": [
+            record("SYNTHEARLY", "2000-01-01T10:00:00", sequence=1),
+            delivered_record(),
+        ],
+    }
+    parcel = normalize_parcel(raw)
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert "SYNTHEARLY" not in caplog.text

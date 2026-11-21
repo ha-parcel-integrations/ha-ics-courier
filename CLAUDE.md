@@ -35,13 +35,12 @@ you act in one of these areas:
   summary+diagnostic sensors. Add a new non-parcel sensor's unique_id to the set.
 - **Per-parcel sensors are removed by the summary sensor** via
   `entity_registry.async_remove` (self-removal races and leaves ghosts).
-- **The optional pickup-point summaries are a pair.** A carrier that can tell
-  a parcel is destined for a pickup point exposes
-  `en_route_to_pickup_point` for `pickup is true` before it arrives; one that
-  can reach `ParcelStatus.AT_PICKUP_POINT` also exposes `awaiting_pickup`.
-  See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
-  "ServicePoint"/"parcel shop"/"locker", for the generic concept; the
-  example carrier demonstrates both canonical sensors.
+- **Both pickup-point summaries are exposed.** `en_route_to_pickup_point`
+  (pickup parcels not yet at the point, not returning) and `awaiting_pickup`
+  (`AT_PICKUP_POINT`) are registered, and their unique_ids stay in
+  `non_parcel_unique_ids`. See *Parcel contract* in `CONVENTIONS.md`. Say
+  "pickup point", not "ServicePoint"/"parcel shop"/"locker", for the generic
+  concept.
 
 ## Carrier-specific notes
 
@@ -60,9 +59,14 @@ you act in one of these areas:
   time); `parse_iso` treats them as UTC only for sorting. One that cannot be
   read is still published — the entry is real — but it logs one WARNING,
   because it is the sort order that suffers.
+- **Pickup is derived.** `pickup` is `is_pickup(None, status, event_statuses)`:
+  true once the status or any event is `AT_PICKUP_POINT`. `pickup_point` is
+  `None` because no name is exposed. Pending evidence: no pickup-point
+  status or flag has been seen on a real parcel, so the two sensors may read
+  0 until one is.
 - **Fields that are `None` on purpose:** sender, receiver, ETA window, pickup
   point, weight, dimensions and `url` (no code-bearing consumer link).
-  `CAPABILITIES` is `{"history"}` and must stay in agreement.
+  `CAPABILITIES` is `{"history"}` and `pickup_point` is in `PENDING_CAPABILITIES`; both must stay in agreement.
 - **No outgoing split:** ICS Courier has no consumer sending surface, so every
   tracked parcel is incoming.
 - **Polling:** with no ETA and no mapped out-for-delivery status the hot tier

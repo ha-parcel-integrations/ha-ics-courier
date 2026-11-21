@@ -32,7 +32,9 @@ PLATFORMS = [Platform.BUTTON, Platform.CALENDAR, Platform.SENSOR]
 # Every optional key the parcel contract defines. CAPABILITIES below must be a
 # subset of this — it exists so a typo in CAPABILITIES fails a test instead of
 # silently dropping a carrier off a table on the docs site.
-KNOWN_CAPABILITIES = frozenset({"history"})
+KNOWN_CAPABILITIES = frozenset(
+    {"weight", "dimensions", "delivery_window", "pickup_point", "url", "history"}
+)
 
 # The trace operation returns the latest status record only: no ETA, parties,
 # pickup point, weight, dimensions or deep link. "history" is the single
@@ -49,7 +51,7 @@ CAPABILITIES = frozenset({"history"})
 # into CAPABILITIES. A multi-backend carrier declares
 # PENDING_CAPABILITIES_BY_VARIANT with the same keys as its
 # CAPABILITIES_BY_VARIANT instead (omit backends with nothing pending).
-PENDING_CAPABILITIES: frozenset[str] = frozenset()
+PENDING_CAPABILITIES: frozenset[str] = frozenset({"pickup_point"})
 
 # If this carrier ever grows a second backend with a genuinely different
 # payload shape (a country-specific API, not just a config option), replace

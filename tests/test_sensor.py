@@ -45,6 +45,15 @@ def _parcel(
     }
 
 
+def test_next_delivery_skips_an_ended_window():
+    parcels = [
+        _parcel("OLD", planned_from="2000-01-01T10:00:00Z"),
+        _parcel("NEXT", planned_from="2099-01-01T10:00:00Z"),
+    ]
+    sensor = ICSCourierNextDeliverySensor(_coordinator(parcels), _entry())
+    assert sensor.extra_state_attributes["barcode"] == "NEXT"
+
+
 def test_incoming_counts_and_lists():
     coordinator = _coordinator([_parcel("A"), _parcel("B")])
     sensor = ICSCourierIncomingParcelsSensor(
@@ -70,12 +79,12 @@ def test_parcel_sensor_missing_barcode():
 def test_next_delivery_picks_earliest():
     coordinator = _coordinator(
         [
-            _parcel("A", planned_from="2026-05-02T10:00:00Z"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("A", planned_from="2099-05-02T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = ICSCourierNextDeliverySensor(coordinator, _entry())
-    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
+    assert sensor.native_value == datetime(2099, 5, 1, 10, 0, tzinfo=UTC)
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
@@ -89,7 +98,7 @@ def test_next_delivery_skips_unparseable_moment():
     coordinator = _coordinator(
         [
             _parcel("A", planned_from="not-a-date"),
-            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+            _parcel("B", planned_from="2099-05-01T10:00:00Z"),
         ]
     )
     sensor = ICSCourierNextDeliverySensor(coordinator, _entry())
@@ -100,6 +109,7 @@ def test_en_route_and_awaiting_pickup_split():
     parcels = [
         _parcel("EN_ROUTE", pickup=True),
         _parcel("READY", pickup=True, status=ParcelStatus.AT_PICKUP_POINT),
+        _parcel("BACK", pickup=True, status=ParcelStatus.RETURNING),
         _parcel("HOME"),
     ]
     en_route = ICSCourierEnRouteToPickupPointSensor(_coordinator(parcels), _entry())
