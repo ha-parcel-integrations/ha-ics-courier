@@ -347,7 +347,7 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     latest = events[-1] if events else {}
     status = map_parcel_status(latest.get("Code"))
     delivered = status is ParcelStatus.DELIVERED
-    event_statuses = [_STATUS_MAP.get(event.get("Code")) for event in events]
+    event_statuses = [_STATUS_MAP.get(event.get("Code") or "") for event in events]
 
     return {
         "carrier": "ICS Courier",
