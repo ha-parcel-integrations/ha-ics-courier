@@ -40,6 +40,7 @@ A custom Home Assistant integration that tracks your [ICS Courier](https://www.i
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels
 - Read-only **Deliveries** calendar (ICS Courier publishes no expected delivery window, so it stays empty)
 - `ics_courier.track_parcel` / `ics_courier.untrack_parcel` services, so a dashboard button can add a parcel
+- A `contents` field on every parcel, set in your own words with the `ics_courier.update_contents` service or the `contents` field of `ics_courier.track_parcel`; it titles the calendar event and shows on the next-delivery sensor
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel status history (a single entry: ICS Courier reports the latest status only)
 - Manual refresh button and a diagnostic last-update sensor
@@ -155,8 +156,9 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `ics_courier.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `ics_courier.track_parcel` | `tracking_code`, optional `contents` | Start tracking a parcel, optionally noting what is in it |
 | `ics_courier.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+| `ics_courier.update_contents` | `tracking_code`, `contents` (optional) | Set what is in a parcel, tracked or not; an empty `contents` clears it. It titles the calendar event and shows on the next-delivery sensor |
 
 ## Examples
 

@@ -135,3 +135,21 @@ def test_moment_stretched_to_end_of_day_stays_timed():
         ]
     )
     assert not cal._events()[0].all_day
+
+
+def test_title_is_the_contents_when_there_are_some():
+    parcel = _parcel("A", planned_from="2099-01-01T10:00:00Z")
+    parcel["contents"] = "Running shoes"
+    assert _cal([parcel]).event.summary == "Running shoes"
+
+
+def test_title_falls_back_to_the_sender_without_contents():
+    parcel = _parcel("A", planned_from="2099-01-01T10:00:00Z")
+    parcel["contents"] = None
+    assert _cal([parcel]).event.summary == "Example Sender"
+
+
+def test_title_falls_back_to_the_barcode_without_contents_or_sender():
+    parcel = _parcel("A", planned_from="2099-01-01T10:00:00Z")
+    parcel["sender"] = None
+    assert _cal([parcel]).event.summary == "Parcel A"
